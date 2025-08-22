@@ -5,7 +5,10 @@
 This project demonstrates an automated workflow in Kestra that processes emails from Gmail using AI analysis. It uses `dlt` (Data Loading Tool) to extract emails, Ollama (local LLM) for AI analysis, BigQuery for data storage, and Slack for notifications.
 
 ![Overview of project demo]
-(https://github.com/faraazzz/AI-Gmail-Summarization-pipeline/blob/main/Main_Flow.png)
+<p align="center">
+  <img src="https://github.com/faraazzz/AI-Gmail-Summarization-pipeline/blob/main/Main_Flow.png" alt="Main Workflow" width="800" />
+</p>
+
 
 
 The workflow includes:
