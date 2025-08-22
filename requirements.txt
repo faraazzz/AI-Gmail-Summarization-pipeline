@@ -1,0 +1,2 @@
+dlt[bigquery]<0.4,>=0.3.19
+requests>=2.31.0

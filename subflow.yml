@@ -1,0 +1,155 @@
+id: process_email
+namespace: blueprint
+
+inputs:
+  - name: data
+    type: JSON
+
+tasks:
+  - id: process_email_ai
+    type: io.kestra.plugin.scripts.python.Script
+    containerImage: python:3.11
+    beforeCommands:
+      - pip install requests
+      - pip install "dlt[bigquery]"
+      - dlt --non-interactive init inbox bigquery
+    warningOnStdErr: false
+    env:
+      CREDENTIALS__PROJECT_ID: "{{ secret('BIGQUERY_PROJECT_ID') }}"
+      CREDENTIALS__PRIVATE_KEY: "{{ secret('BIGQUERY_PRIVATE_KEY') }}"
+      CREDENTIALS__CLIENT_EMAIL: "{{ secret('BIGQUERY_CLIENT_EMAIL') }}"
+      SOURCES__HOST: "{{ secret('GMAIL_HOST') }}"
+      SOURCES__EMAIL_ACCOUNT: "{{ secret('GMAIL_EMAIL_ACCOUNT') }}"
+      SOURCES__PASSWORD: "{{ secret('GMAIL_PASSWORD') }}"
+    script: |
+      import requests
+      import json
+      import dlt
+      
+      # Get the input data from Kestra context
+      data = {{ inputs.data }}
+      
+      # Safely extract email data with fallback
+      try:
+          if isinstance(data, dict):
+              email_body = data.get('body', '')
+              email_id = data.get('message_uid', 'unknown')
+              email_date = data.get('date', 'unknown')
+              email_subject = data.get('subject', 'No Subject')
+              email_from = data.get('from', 'Unknown Sender')
+          else:
+              email_body = str(data)
+              email_id = 'unknown'
+              email_date = 'unknown'
+              email_subject = 'No Subject'
+              email_from = 'Unknown Sender'
+      except Exception as e:
+          email_body = f"Error accessing data: {str(e)}"
+          email_id = 'error'
+          email_date = 'error'
+          email_subject = 'Error'
+          email_from = 'Error'
+      
+      # Ollama API call for summarization
+      ollama_url = "http://host.docker.internal:11434/api/generate"
+      
+      summary = "No summary generated"
+      sentiment = "neutral"
+      
+      try:
+          # Generate summary
+          summary_prompt = f"Summarize the email content in one sentence with less than 30 words: {email_body}"
+          summary_payload = {
+              "model": "llama2:7b",
+              "prompt": summary_prompt,
+              "stream": False
+          }
+          
+          response = requests.post(ollama_url, json=summary_payload)
+          response.raise_for_status()
+          result = response.json()
+          summary = result.get('response', 'No summary generated').strip()
+          
+      except Exception as e:
+          summary = f"Error generating summary: {str(e)}"
+      
+      try:
+          # Generate sentiment
+          sentiment_prompt = f"Analyze the sentiment of the following email and reply only with one word (positive, negative, or neutral): {email_body}"
+          sentiment_payload = {
+              "model": "llama2:7b",
+              "prompt": sentiment_prompt,
+              "stream": False
+          }
+          
+          response = requests.post(ollama_url, json=sentiment_payload)
+          response.raise_for_status()
+          result = response.json()
+          sentiment = result.get('response', 'neutral').strip().lower()
+          
+          # Clean up the response to get just one word
+          sentiment_words = ['positive', 'negative', 'neutral']
+          for word in sentiment_words:
+              if word in sentiment:
+                  sentiment = word
+                  break
+          else:
+              sentiment = 'neutral'
+              
+      except Exception as e:
+          sentiment = 'neutral'
+      
+      # Create the data structure for BigQuery
+      processed_data = [{
+          "email_id": email_id,
+          "summary": summary,
+          "sentiment": sentiment,
+          "date": email_date
+      }]
+
+      # Create a dlt pipeline for BigQuery
+      pipeline = dlt.pipeline(
+          pipeline_name='json_to_bigquery',
+          destination='bigquery',
+          dataset_name='messages_data',
+      )
+
+      # Load the data into BigQuery
+      try:
+          load_info = pipeline.run(processed_data, table_name="processed_emails")
+          print(f"BigQuery load info: {load_info}")
+      except Exception as e:
+          print(f"BigQuery load error: {str(e)}")
+      
+      # Output variables for Slack notification (always output these)
+      print(f"summary: {summary}")
+      print(f"sentiment: {sentiment}")
+      print(f"subject: {email_subject}")
+      print(f"from: {email_from}")
+      print(f"date: {email_date}")
+      
+      # Debug: Print all variables to ensure they're being output
+      print("=== DEBUG OUTPUT ===")
+      print(f"DEBUG_SUMMARY: {summary}")
+      print(f"DEBUG_SENTIMENT: {sentiment}")
+      print(f"DEBUG_SUBJECT: {email_subject}")
+      print(f"DEBUG_FROM: {email_from}")
+      print(f"DEBUG_DATE: {email_date}")
+      print("=== END DEBUG ===")
+      
+      # Send Slack notification directly from this task
+      try:
+          slack_url = "{{ secret('SLACK_WEBHOOK_URL') }}"
+          slack_message = {
+              "channel": "#new-channel",
+              "text": f"*Subject*: {email_subject}\n*Sender:* {email_from}\n*Summary:* {summary}\n*Sentiment:* {sentiment}\n*Date:* {email_date}\n"
+          }
+          
+          response = requests.post(slack_url, json=slack_message)
+          response.raise_for_status()
+          print(f"Slack notification sent successfully: {response.status_code}")
+          print(f"Slack message: {slack_message['text']}")
+      except Exception as e:
+          print(f"Error sending Slack notification: {str(e)}")
+          print(f"Slack message content: {json.dumps(slack_message, indent=2)}")
+
