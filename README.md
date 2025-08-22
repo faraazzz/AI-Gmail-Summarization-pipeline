@@ -1,196 +1,274 @@
-# From Inbox to Insights: AI-enhanced email analysis with dlt and Kestra
+# From Inbox to Insights: AI-enhanced email analysis with dlt, Kestra, and Ollama
 
 ## Overview
 
-This is a demo project that shows the automation of a workflow in Kestra. It demonstrates the process of loading data from Gmail into BigQuery using `dlt` (Data Loading Tool) and includes AI analysis, specifically for summarization and sentiment asessment.
+This project demonstrates an automated workflow in Kestra that processes emails from Gmail using AI analysis. It uses `dlt` (Data Loading Tool) to extract emails, Ollama (local LLM) for AI analysis, BigQuery for data storage, and Slack for notifications.
 
 ![Overview of project demo](dlt-kestra-demo.png)
 
-The diagram above represents the workflow overview of the automation process in Kestra, encompassing the following steps:
+The workflow includes:
+1. **Data Ingestion**: Extract emails from Gmail using `dlt`
+2. **AI Analysis**: Summarize emails and analyze sentiment using Ollama (local LLM)
+3. **Data Storage**: Store results in BigQuery
+4. **Notifications**: Share insights via Slack
 
-1. Data ingestion from Gmail to BigQuery utilizing `dlt`.
-2. Data analysis for summarization and sentiment assessment using OpenAI, with the results stored in BigQuery.
-3. Sharing of the outcomes to Slack.
+## 🚀 Key Features
 
-## Prerequisites
+- **Local AI Processing**: Uses Ollama with Llama2 model for privacy and cost-effectiveness
+- **Automated Workflow**: Scheduled email processing with Kestra orchestration
+- **Real-time Analysis**: Email summarization and sentiment analysis
+- **Cloud Storage**: BigQuery integration for data persistence
+- **Team Collaboration**: Slack notifications for processed emails
 
-1. Gmail credentials
-    - IMAP server hostname (default for Gmail is `imap.gmail.com`)
-    - Gmail account email
-    - App password
+## 📋 Prerequisites
 
-    >For the app pasword, refer to Gmail's [official guidelines](https://support.google.com/mail/answer/185833?hl=en#:~:text=An%20app%20password%20is%20a,2%2DStep%20Verification%20turned%20on).
-    
-2. BigQuery credentials
-    - Project ID
-    - Private key
-    - Client email
-    
-    >Learn more about obtaining BigQuery credentials in `dlt`'s [documentation](https://dlthub.com/docs/dlt-ecosystem/destinations/bigquery).
+### Required Software
+- **Docker Desktop** - For running Kestra and Ollama
+- **Python 3.11** - For local development and testing
+- **Git** - For version control
 
-3. OpenAI API key
-    
-    >If you're new to [OpenAi](https://platform.openai.com/), they offer $5 in free credits usable during your first 3 months.
+### Service Accounts & Credentials
 
-4. Slack credentials
-    - Webhook URL
+1. **Gmail Credentials**
+   - IMAP server hostname (default: `imap.gmail.com`)
+   - Gmail account email
+   - App password (not regular password)
+   
+   > For app password setup, see [Gmail's official guidelines](https://support.google.com/mail/answer/185833?hl=en)
 
-    >Follow Slack's [guidelines](https://api.slack.com/messaging/webhooks) to obtain your webhook URL.
-    
-## Setup Guide
+2. **BigQuery Credentials**
+   - Project ID
+   - Private key (JSON format)
+   - Client email
+   
+   > Learn more in [dlt's BigQuery documentation](https://dlthub.com/docs/dlt-ecosystem/destinations/bigquery)
 
-1. **Create a Virtual Environment**: It's advised to create a virtual environment to maintain a clean workspace and prevent dependency conflicts, although this is not mandatory.
+3. **Slack Webhook URL**
+   - Create a webhook in your Slack workspace
+   
+   > Follow [Slack's webhook guidelines](https://api.slack.com/messaging/webhooks)
 
-2. **Create an .env File**: Within your repository, generate an ``.env`` file to securely store credentials in base64 format. Prefix each secret with 'SECRET_' in order for Kestra's [`secret()`](https://kestra.io/docs/developer-guide/variables/function/secret) function to work. The file should look like this: 
+## 🛠️ Installation & Setup
 
-    ```env
-    SECRET_GMAIL_HOST=someSecretValueInBase64
-    SECRET_GMAIL_EMAIL_ACCOUNT=someSecretValueInBase64
-    SECRET_GMAIL_PASSWORD=someSecretValueInBase64
-    SECRET_BIGQUERY_PROJECT_ID=someSecretValueInBase64
-    SECRET_BIGQUERY_PRIVATE_KEY=someSecretValueInBase64
-    SECRET_BIGQUERY_CLIENT_EMAIL=someSecretValueInBase64
-    SECRET_OPENAI_API=someSecretValueInBase64
-    SECRET_SLACK_WEBHOOK_URL=someSecretValueInBase64
+### 1. Clone the Repository
+```bash
+git clone <your-repository-url>
+cd DEProject
+```
 
-    ```
+### 2. Install Ollama
 
-   >The base64 format is required because Kestra mandates it.
-  
-    Find out more about managing secrets in Kestra [here](https://kestra.io/docs/developer-guide/secrets).
+#### Windows:
+1. Download from: https://ollama.ai/download
+2. Install and start Ollama from Start menu
 
-3. **Download Docker Desktop**: As recommended by Kestra, download and install Docker Desktop.
+#### Docker (Alternative):
+```bash
+docker run -d -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama
+```
 
-4. **Download Docker Compose File**: Verify that Docker is active and download the Docker Compose file using the following command:
-   ```bash
-    curl -o docker-compose.yml \
-    https://raw.githubusercontent.com/kestra-io/kestra/develop/docker-compose.yml
-    ```
-5. **Configure Docker Compose File**: Modify your Docker Compose file to include the ``.env`` file:
+### 3. Download Llama2 Model
+```bash
+ollama pull llama2:7b
+```
 
-    ```yaml
-    kestra:
-        image: kestra/kestra:develop-full
-        env_file:
-            - .env
-    ``` 
+### 4. Test Ollama Installation
+```bash
+ollama run llama2:7b "Hello, how are you?"
+```
 
-6. **Enable Auto-Restart in Docker Compose**: Add ``restart: always`` to the `postgres` and `kestra` services in your `docker-compose.yml`. This ensures they automatically restart after a system reboot:
+### 5. Create Environment File
+Create a `.env` file in your project root with base64-encoded credentials:
 
-    ```yaml
-    postgres:
-        image: postgres
-        restart: always
-    ```
+```env
+# Gmail Credentials (Base64 encoded)
+SECRET_GMAIL_HOST=imap.gmail.com
+SECRET_GMAIL_EMAIL_ACCOUNT=your-email@gmail.com
+SECRET_GMAIL_PASSWORD=your-app-password
 
-    ```yaml
-    kestra:
-        image: kestra/kestra:latest-full
-        restart: always
-    ```
-7. **Start Kestra Server**: Run the following command:
-   ```bash
-    docker compose up -d
-    ```
-8. **Access Kestra UI**: Launch http://localhost:8080/ to open the Kestra UI.
+# BigQuery Credentials (Base64 encoded)
+SECRET_BIGQUERY_PROJECT_ID=your-project-id
+SECRET_BIGQUERY_PRIVATE_KEY=your-private-key
+SECRET_BIGQUERY_CLIENT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
 
-## Create Your Flows
-1. **Navigate to Flows**: On the left side menu, click on 'Flows', then click 'Create' in the upper right corner.
-2. **Copy and Paste YAML Code**: Copy the YAML code from `mainflow.yml` and paste it into the editor in Kestra.
-3. **Save Your Main Flow**: After pasting the code, save your flow.
-4. **Save Your Subflow**: Repeat the same process for the `subflow.yml` file.
+# Slack Webhook URL (Base64 encoded)
+SECRET_SLACK_WEBHOOK_URL=your-slack-webhook-url
 
-## Understand Your Flows
-In Kestra, each flow consists of three required components:
-- **`id`**: Represents the name of the flow.
-- **`namespace`**: Can be used to separate development and production environments.
-- **`tasks`**: A list of tasks to be executed in the order they are defined. Each task in `tasks` must contain an `id` and a `type` as well.
+# GCP Service Account (for BigQuery plugin)
+SECRET_GCP_SA={"type":"service_account","project_id":"your-project-id","private_key_id":"key-id","private_key":"-----BEGIN PRIVATE KEY-----\nyour-private-key\n-----END PRIVATE KEY-----\n","client_email":"your-service-account@your-project.iam.gserviceaccount.com","client_id":"client-id","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs","client_x509_cert_url":"https://www.googleapis.com/robot/v1/metadata/x509/your-service-account%40your-project.iam.gserviceaccount.com"}
+```
 
-### The Main Flow Explained 
+### 6. Setup Docker Compose
+Download and configure Docker Compose:
+```bash
+curl -o docker-compose.yml https://raw.githubusercontent.com/kestra-io/kestra/develop/docker-compose.yml
+```
 
-The `dlt-kestra-demo` flow extracts email data from Gmail and loads it into BigQuery using `dlt`, checks for new emails, and if found, triggers the `process_emails` subflow for further processing and analysis. The `tasks` section includes the following tasks:
+Update the `docker-compose.yml` to include your `.env` file:
+```yaml
+kestra:
+    image: kestra/kestra:develop-full
+    env_file:
+        - .env
+    restart: always
+```
 
-1. **`dlt_pipeline`**: Loads Gmail data into BigQuery using `dlt`.
+### 7. Start Services
+```bash
+docker compose up -d
+```
 
-    - **The `beforeCommands` Section**: Outlines initial setup commands executed in a Python 3.11 Docker environment, preparing the environment with necessary dependencies.
-    - **`warningOnStdEr`**: Set to `false` to ensure that warnings are not treated as critical errors.
-    - **The `env` Block**: Defines environment variables, providing essential credentials.
+### 8. Access Kestra UI
+Open http://localhost:8080/ in your browser
 
-        >The variable names for Gmail and BigQuery credentials match the `dlt` pipeline's requirements, allowing automatic detection and use of these credentials.
+## 📁 Project Structure
 
-    - **The `script` Section**: Contains a Python script where we define our `dlt` pipeline and run it: 
+```
+DEProject/
+├── .env                    # Environment variables (create this)
+├── .gitignore             # Git ignore rules
+├── docker-compose.yml     # Docker services configuration
+├── mainflow.yml          # Main Kestra workflow
+├── subflow.yml           # Subflow for email processing
+├── requirements.txt      # Python dependencies
+├── inbox/               # dlt inbox source configuration
+│   ├── __init__.py
+│   ├── helpers.py
+│   ├── settings.py
+│   └── README.md
+├── OLLAMA_SETUP.md      # Ollama setup instructions
+└── README.md           # This file
+```
 
-        ```python
-        # Run dlt pipeline to load email data from gmail to BigQuery
-        pipeline = dlt.pipeline(
-            pipeline_name="standard_inbox",
-            destination='bigquery',
-            dataset_name="messages_data",
-            full_refresh=False,
-        )
+## 🔧 Configuration
 
-        # Set table name
-        table_name = "my_inbox"
-        # Get messages resource from the source
-        messages = inbox_source(start_date = pendulum.datetime(2023, 11, 15)).messages
-        # Configure the messages resource to get bodies of the emails
-        messages = messages(include_body=True).with_name(table_name)
-        # Load data to "my_inbox" table
-        load_info = pipeline.run(messages)    
-        ```
-        
-        Using `load_info`, we then define an output with a load status, upon which the next conditional task depends.
+### Kestra Flows Setup
 
-        >Additional parameters, such as the email folder or a start date, can be passed to the `inbox_source()` function. For more detailed information on these parameters and other aspects of the `dlt` library, refer to `dlt`'s official [documentation](https://dlthub.com/docs/dlt-ecosystem/verified-sources/inbox).
+1. **Create Main Flow**:
+   - Navigate to Flows → Create in Kestra UI
+   - Copy content from `mainflow.yml`
+   - Save as `dlt-kestra-demo`
 
-2. **`check_load_status`**: Employs a conditional check to determine if new emails have been loaded. If no new emails are found, it sends a notification to Slack via Kestra's Slack plugin, indicating the absence of new emails. Conversely, if new emails are present, it performs two subsequent tasks:
+2. **Create Subflow**:
+   - Create another flow
+   - Copy content from `subflow.yml`
+   - Save as `process_email`
 
-    - **`get_new_emails`** Utilizes Kestra's BigQuery plugin to query the most recently loaded email data.
-    - **`sequential`**: Invokes sequential tasks of the `process_email` subflow for each new email.
-  
-The `Triggers` section of the main flow features a schedule trigger, using a cron expression to automatically run the workflow every hour on workdays from 10 am to 6 pm, eliminating the need for manual execution. Learn more about Kestra triggers [here](https://kestra.io/docs/developer-guide/triggers).
+### Workflow Configuration
 
+The main flow (`dlt-kestra-demo`) includes:
+- **dlt_pipeline**: Extracts emails from Gmail to BigQuery
+- **check_load_status**: Checks for new emails
+- **get_new_emails**: Retrieves new email data
+- **sequential**: Processes each email through subflow
 
-### The Subflow Explained 
+The subflow (`process_email`) includes:
+- **process_email_ai**: Uses Ollama for AI analysis
+- **dlt_load_result**: Stores processed data in BigQuery
+- **send_to_slack**: Sends notifications
 
-The `process_emails` subflow uses OpenAI to summarize and analyze the sentiment of an email, loads this processed data into BigQuery, and then notifies about the email details via Slack.
+## 🚀 Usage
 
-1. **`get_summary` and `get_sentiment`**: Use Kestra's OpenAI plugin to get the summary and sentiment of the email body.
+### Manual Execution
+1. Open Kestra UI (http://localhost:8080/)
+2. Navigate to your flow
+3. Click "Execute" to run manually
 
-2. **`parallel_tasks`**: Executes two tasks in parallel:
+### Scheduled Execution
+The workflow runs automatically:
+- **Schedule**: Every hour, 9 AM - 6 PM, Monday-Friday
+- **Trigger**: Cron expression `0 9-18 * * 1-5`
 
-    - **`dlt_load_result`**: Runs a Python script to load the processed data into BigQuery using a `dlt` pipeline.
+### Monitoring
+- View execution logs in Kestra UI
+- Check BigQuery for stored data
+- Monitor Slack for notifications
 
-        ```python
-        # Define the email data to load, including ID, summary, sentiment, and date, using outputs from previous tasks
-        data = [{
-                "email_id": '{{ inputs.data[0]['message_uid']}}',
-                "summary": '{{outputs.get_summary.choices[0].message.content}}',
-                "sentiment": '{{outputs.get_sentiment.choices[0].message.content}}',
-                "date": '{{ inputs.data[0]['date']}}'
-        }]
+## 📊 Data Flow
 
-        # Create a dlt pipeline for BigQuery
-        pipeline = dlt.pipeline(
-            pipeline_name='json_to_bigquery',
-            destination='bigquery',
-            dataset_name='messages_data',
-        )
+1. **Email Extraction**: dlt connects to Gmail and extracts emails
+2. **Data Storage**: Raw emails stored in BigQuery `messages_data.my_inbox`
+3. **AI Processing**: Ollama analyzes each email for:
+   - Summary (30 words max)
+   - Sentiment (positive/negative/neutral)
+4. **Results Storage**: Processed data stored in `messages_data.processed_emails`
+5. **Notifications**: Slack receives formatted messages with insights
 
-        # Load the data into the specified BigQuery table 
-        load_info = pipeline.run(data, table_name="processed_emails")    
-        ```
+## 🔍 Troubleshooting
 
-        >`dlt` will create a new table in Bigquery if the table doesn't exist yet.
+### Ollama Issues
+```bash
+# Check if Ollama is running
+curl http://localhost:11434/api/tags
 
+# Restart Ollama
+ollama serve
 
-    - **`send_to_slack`**: Utilizes Kestra's Slack plugin to send a message with details like the subject, sender, summary, sentiment, and date of each processed email.
+# Test model
+ollama run llama2:7b "Test message"
+```
 
-## Execute your flows
-To execute a flow in Kestra after setting up the YAML file, simply click on 'Execute' in the top right corner of the Kestra interface. This action initiates the flow. You can then monitor its progress and review outputs directly through the Kestra UI.
+### Kestra Issues
+```bash
+# Check Docker containers
+docker ps
 
-## Contact / Support
-For guidance on running custom pipelines with `dlt` or orchestrating flows in Kestra, consider joining their Slack communities:
+# View logs
+docker compose logs kestra
 
-- [dltHub](https://dlthub-community.slack.com)
-- [Kestra](https://kestra-io.slack.com)
+# Restart services
+docker compose restart
+```
+
+### BigQuery Issues
+- Verify service account permissions
+- Check project ID and dataset names
+- Ensure credentials are properly encoded
+
+## 📈 Benefits of Ollama Integration
+
+✅ **Cost Effective**: No API costs - runs locally  
+✅ **Privacy**: Data stays on your machine  
+✅ **Offline**: Works without internet connection  
+✅ **Customizable**: Can use different models  
+✅ **Fast**: Local processing reduces latency  
+
+## 🛡️ Security
+
+- All credentials stored as base64-encoded secrets
+- Local AI processing ensures data privacy
+- No external API calls for AI analysis
+- Secure BigQuery service account authentication
+
+## 📝 Version Information
+
+- **Python**: 3.11
+- **dlt**: >=0.3.19, <0.4
+- **Kestra**: develop-full (latest)
+- **Ollama**: Latest stable
+- **Llama2 Model**: 7B parameter version
+- **Docker**: Latest stable
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 📞 Support
+
+For help and community support:
+
+- **dltHub Community**: [Slack](https://dlthub-community.slack.com)
+- **Kestra Community**: [Slack](https://kestra-io.slack.com)
+- **Ollama Documentation**: [ollama.ai](https://ollama.ai/docs)
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+**Note**: This project uses local AI processing with Ollama, ensuring your email data remains private and secure while providing powerful analysis capabilities.
