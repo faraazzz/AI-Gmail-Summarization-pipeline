@@ -10,7 +10,8 @@ The workflow includes:
 1. **Data Ingestion**: Extract emails from Gmail using `dlt`
 2. **AI Analysis**: Summarize emails and analyze sentiment using Ollama (local LLM)
 3. **Data Storage**: Store results in BigQuery
-4. **Notifications**: Share insights via Slack
+4. **Notifications**: Share insights via Slack <img width="854" height="419" alt="image" src="https://github.com/user-attachments/assets/eaa0ed2c-5f1d-4e5c-b7da-9fbaa35f0886" />
+
 
 ## 🚀 Key Features
 
@@ -146,12 +147,12 @@ DEProject/
 
 1. **Create Main Flow**:
    - Navigate to Flows → Create in Kestra UI
-   - Copy content from `mainflow.yml`
+   - `mainflow.yml`
    - Save as `dlt-kestra-demo`
 
 2. **Create Subflow**:
    - Create another flow
-   - Copy content from `subflow.yml`
+   - `subflow.yml`
    - Save as `process_email`
 
 ### Workflow Configuration
@@ -233,13 +234,6 @@ docker compose restart
 ✅ **Customizable**: Can use different models  
 ✅ **Fast**: Local processing reduces latency  
 
-## 🛡️ Security
-
-- All credentials stored as base64-encoded secrets
-- Local AI processing ensures data privacy
-- No external API calls for AI analysis
-- Secure BigQuery service account authentication
-
 ## 📝 Version Information
 
 - **Python**: 3.11
@@ -249,26 +243,5 @@ docker compose restart
 - **Llama2 Model**: 7B parameter version
 - **Docker**: Latest stable
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📞 Support
-
-For help and community support:
-
-- **dltHub Community**: [Slack](https://dlthub-community.slack.com)
-- **Kestra Community**: [Slack](https://kestra-io.slack.com)
-- **Ollama Documentation**: [ollama.ai](https://ollama.ai/docs)
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
----
 
 **Note**: This project uses local AI processing with Ollama, ensuring your email data remains private and secure while providing powerful analysis capabilities.
