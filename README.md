@@ -1,4 +1,4 @@
-# From Inbox to Insights: AI-enhanced email analysis with dlt, Kestra, and Ollama
+# From Inbox to Insights: AI-Powered Reporting Workflow
 
 ## Overview
 
