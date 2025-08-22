@@ -10,7 +10,11 @@ The workflow includes:
 1. **Data Ingestion**: Extract emails from Gmail using `dlt`
 2. **AI Analysis**: Summarize emails and analyze sentiment using Ollama (local LLM)
 3. **Data Storage**: Store results in BigQuery
-4. **Notifications**: Share insights via Slack <img width="854" height="419" alt="image" src="https://github.com/user-attachments/assets/eaa0ed2c-5f1d-4e5c-b7da-9fbaa35f0886" />
+4. **Notifications**: Share insights via Slack 
+<img src="https://github.com/faraazzz/AI-Gmail-Summarization-pipeline/blob/main/Slack_Update.png" alt="Workflow" width="600"/>
+
+
+[Slack_Update.png]
 
 
 ## 🚀 Key Features
